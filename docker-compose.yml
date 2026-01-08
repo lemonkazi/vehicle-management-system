@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   mysql:
@@ -18,11 +18,12 @@ services:
       - vehicle-network
     command: --default-authentication-plugin=mysql_native_password --innodb-redo-log-capacity=0
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
       timeout: 20s
       retries: 10
 
   app:
+    image: vehicle-app-dev
     build:
       context: .
       args:
@@ -36,11 +37,15 @@ services:
       NEXTAUTH_SECRET: your-secret-key-here-change-this-in-production
       NEXTAUTH_URL: http://localhost:3000
       JWT_SECRET: your-jwt-secret-key-change-this
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
     depends_on:
       mysql:
         condition: service_healthy
     networks:
       - vehicle-network
+    command: npm run dev
 
   phpmyadmin:
     image: phpmyadmin

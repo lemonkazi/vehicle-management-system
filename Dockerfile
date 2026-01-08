@@ -8,7 +8,7 @@ ENV DATABASE_URL=$DATABASE_URL
 WORKDIR /app
 
 # Copy package files
-COPY package.json ./
+COPY package*.json ./
 
 # Install dependencies
 RUN npm install
@@ -20,10 +20,11 @@ COPY . .
 RUN npx prisma generate
 
 # Build the application
-RUN npm run build
+#RUN npm run build
 
 # Expose port
 EXPOSE 3000
 
 # Start the application
-CMD ["npm", "start"]
+#CMD ["npm", "start"]
+CMD ["npm", "run", "dev"]
