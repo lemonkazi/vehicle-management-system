@@ -37,7 +37,7 @@ export default function AdminLayout({
     console.log('AdminLayout useEffect triggered')
     const token = localStorage.getItem('admin_token')
     const user_role = localStorage.getItem('user_role')
-    console.log('Token found:', token ? 'Yes' : 'No')
+    console.log('1Token found:', token ? 'Yes' : 'No')
 
     if (!token) {
       console.log('No token found, redirecting to /login')

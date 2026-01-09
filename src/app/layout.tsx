@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { headers } from 'next/headers'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -36,11 +37,22 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const headersList = headers()
+  const pathname = headersList.get('x-invoke-path') || ''
+  console.log("===========dd=");
+  console.log(pathname);
+  
+  // Check if current route is admin route
+  const isAdminRoute = pathname.startsWith('/admin')
+  
+  // Don't show header/footer for admin routes
+  const showHeaderFooter = !isAdminRoute
+
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen flex flex-col">
-          <Header />
+        <div className="11 min-h-screen flex flex-col">
+          {showHeaderFooter && <Header />}
           <main className="flex-grow">{children}</main>
           <Footer />
         </div>
