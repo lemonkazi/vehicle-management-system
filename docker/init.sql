@@ -82,5 +82,5 @@ INSERT IGNORE INTO vehicle_types (name, description) VALUES
 ('Pickup', 'Light pickup vehicles'),
 ('Lorry', 'Medium to heavy lorries'),
 ('Car', 'Personal and commercial cars'),
-('Car', 'Emergency medical vehicles'),
+('Ambulance', 'Emergency medical vehicles'),
 ('Others', 'Other types of vehicles');

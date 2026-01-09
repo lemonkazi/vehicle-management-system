@@ -27,7 +27,7 @@ async function main() {
     { name: 'Pickup', description: 'Light pickup vehicles' },
     { name: 'Lorry', description: 'Medium to heavy lorries' },
     { name: 'Car', description: 'Personal and commercial cars' },
-    { name: 'Car', description: 'Emergency medical vehicles' },
+    { name: 'Ambulance', description: 'Emergency medical vehicles' },
     { name: 'Others', description: 'Other types of vehicles' }
   ]
 
@@ -65,13 +65,15 @@ async function main() {
   ]
 
   for (const driver of drivers) {
-    const createdDriver = await prisma.driver.create({
-      data: driver
+    const createdDriver = await prisma.driver.upsert({
+      where: { contractNumber: driver.contractNumber }, // Unique constraint field
+      update: {}, // Update nothing if exists (or specify fields to update)
+      create: driver
     })
-    console.log(`✅ Created driver: ${createdDriver.name}`)
+    console.log(`✅ Upserted driver: ${createdDriver.name}`)
   }
 
-  // Create sample owners
+  // Create sample owners - FIXED: Use upsert instead of create
   const owners = [
     {
       name: 'Transport Ltd.',
@@ -92,23 +94,25 @@ async function main() {
   ]
 
   for (const owner of owners) {
-    const createdOwner = await prisma.owner.create({
-      data: owner
+    const createdOwner = await prisma.owner.upsert({
+      where: { contractNumber: owner.contractNumber }, // Unique constraint field
+      update: {}, // Update nothing if exists (or specify fields to update)
+      create: owner
     })
-    console.log(`✅ Created owner: ${createdOwner.name}`)
+    console.log(`✅ Upserted owner: ${createdOwner.name}`)
   }
 
-  // Create sample vehicles
+  // Create sample vehicles - FIXED: Use upsert instead of create
   const vehicleTypeIds = await prisma.vehicleType.findMany({
     select: { id: true, name: true }
   })
   
   const driverIds = await prisma.driver.findMany({
-    select: { id: true }
+    select: { id: true, contractNumber: true }
   })
   
   const ownerIds = await prisma.owner.findMany({
-    select: { id: true }
+    select: { id: true, contractNumber: true }
   })
 
   const vehicles = [
@@ -121,8 +125,8 @@ async function main() {
       vehicleLocation: 'Dhaka',
       serviceArea: 'Dhaka Division',
       status: 'AVAILABLE' as const,
-      driverId: driverIds[0]?.id,
-      ownerId: ownerIds[0]?.id
+      driverId: driverIds.find(d => d.contractNumber === '+1234567890')?.id,
+      ownerId: ownerIds.find(o => o.contractNumber === '+1122334455')?.id
     },
     {
       vehicleTypeId: vehicleTypeIds.find(v => v.name === 'Pickup')?.id,
@@ -133,8 +137,8 @@ async function main() {
       vehicleLocation: 'Chittagong',
       serviceArea: 'Chittagong Division',
       status: 'LOADING' as const,
-      driverId: driverIds[1]?.id,
-      ownerId: ownerIds[1]?.id
+      driverId: driverIds.find(d => d.contractNumber === '+9876543210')?.id,
+      ownerId: ownerIds.find(o => o.contractNumber === '+9988776655')?.id
     },
     {
       vehicleTypeId: vehicleTypeIds.find(v => v.name === 'Lorry')?.id,
@@ -145,16 +149,18 @@ async function main() {
       vehicleLocation: 'Sylhet',
       serviceArea: 'Sylhet Division',
       status: 'UNLOADING' as const,
-      driverId: driverIds[0]?.id,
-      ownerId: ownerIds[0]?.id
+      driverId: driverIds.find(d => d.contractNumber === '+1234567890')?.id,
+      ownerId: ownerIds.find(o => o.contractNumber === '+1122334455')?.id
     }
   ]
 
   for (const vehicle of vehicles) {
-    const createdVehicle = await prisma.vehicle.create({
-      data: vehicle
+    const createdVehicle = await prisma.vehicle.upsert({
+      where: { engineNumber: vehicle.engineNumber }, // Assuming engineNumber is unique
+      update: {}, // Update nothing if exists (or specify fields to update)
+      create: vehicle
     })
-    console.log(`✅ Created vehicle: ${createdVehicle.vehicleLicenseNumber}`)
+    console.log(`✅ Upserted vehicle: ${createdVehicle.vehicleLicenseNumber}`)
   }
 
   console.log('🌱 Seed completed successfully!')

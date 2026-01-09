@@ -8,13 +8,14 @@
   --background-end-rgb: 255, 255, 255;
 }
 
-@media (prefers-color-scheme: dark) {
+/* REMOVE THIS ENTIRE DARK MODE MEDIA QUERY SECTION */
+/* @media (prefers-color-scheme: dark) {
   :root {
     --foreground-rgb: 255, 255, 255;
     --background-start-rgb: 0, 0, 0;
     --background-end-rgb: 0, 0, 0;
   }
-}
+} */
 
 body {
   color: rgb(var(--foreground-rgb));
@@ -42,6 +43,11 @@ body {
   h4 {
     @apply text-xl font-semibold tracking-tight;
   }
+  
+  /* Fix input text color without dark mode */
+  input, textarea, select {
+    @apply text-gray-900;
+  }
 }
 
 @layer components {
@@ -58,7 +64,10 @@ body {
   }
   
   .input-field {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg 
+           focus:outline-none focus:ring-2 focus:ring-primary-500 
+           focus:border-transparent 
+           text-gray-900 bg-white;
   }
   
   .badge {

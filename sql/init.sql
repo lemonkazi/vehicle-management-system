@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS vehicle_types (
 
 -- Insert default vehicle types
 INSERT INTO vehicle_types (name) VALUES 
-  ('Truck'), ('Pickup'), ('Lory'), ('Car'), ('Car'), ('Others')
+  ('Truck'), ('Pickup'), ('Lory'), ('Ambulance'), ('Car'), ('Others')
 ON DUPLICATE KEY UPDATE name=name;
 
 -- Owners Table
