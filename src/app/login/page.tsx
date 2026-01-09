@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Truck, Lock, Mail } from 'lucide-react'
 
-export default function AdminLoginPage() {
+export default function LoginPage() {
   const router = useRouter()
   const [formData, setFormData] = useState({
     email: '',
@@ -30,9 +30,14 @@ export default function AdminLoginPage() {
       const data = await response.json()
 
       if (data.success) {
-        // Store token and redirect to admin dashboard
-        localStorage.setItem('admin_token', data.token)
-        router.push('/admin')
+        // Store token and redirect based on role
+        localStorage.setItem('admin_token', data.token) // Changed to generic 'token'
+        localStorage.setItem('user_role', data.user.role)
+        if (data.user.role === 'ADMIN') {
+          router.push('/admin')
+        } else {
+          router.push('/')
+        }
       } else {
         setError(data.message || 'Login failed')
       }
@@ -51,10 +56,10 @@ export default function AdminLoginPage() {
             <Truck className="h-12 w-12 text-blue-600" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Admin Login
+            Login
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to access the admin dashboard
+            Sign in to your account
           </p>
         </div>
 
@@ -81,7 +86,7 @@ export default function AdminLoginPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="admin@example.com"
+                  placeholder="user@example.com"
                 />
               </div>
             </div>

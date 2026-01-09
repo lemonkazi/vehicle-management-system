@@ -27,7 +27,8 @@
     "autoprefixer": "^10.4.0",
     "postcss": "^8.4.0",
     "lucide-react": "^0.309.0",
-    "next-auth": "^4.24.5"
+    "next-auth": "^4.24.5",
+    "jwt-decode": "^4.0.0"
   },
   "devDependencies": {
     "lucide-react": "^0.309.0",

@@ -21,7 +21,6 @@ export default function Sidebar() {
     { name: 'Truck', count: 45, icon: '🚚' },
     { name: 'Pickup', count: 30, icon: '🛻' },
     { name: 'Lorry', count: 25, icon: '🚛' },
-    { name: 'Car', count: 20, icon: '🚗' },
     { name: 'Car', count: 10, icon: '🚑' },
   ]
 

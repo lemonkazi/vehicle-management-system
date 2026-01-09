@@ -36,14 +36,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if admin
-    if (user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { success: false, message: 'Access denied. Admin only.' },
-        { status: 403 }
-      )
-    }
-
     // Generate JWT token
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
