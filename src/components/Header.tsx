@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Menu, X, Truck, Search } from 'lucide-react'
 
@@ -14,8 +15,18 @@ export default function Header() {
     { label: 'Vehicle Types', href: '/vehicle-types' },
     { label: 'Contact', href: '/contact' },
   ]
+  const [showHeader, setShowHeader] = useState(true)
+  const pathname = usePathname()
+  const router = useRouter()
+  
+  useEffect(() => {
+    const isAdminRoute = pathname.startsWith('/admin')
+    // Don't show header/footer for admin routes
+    setShowHeader(!isAdminRoute)
+  }, [pathname])
 
   return (
+    showHeader &&
     <header className="sticky top-0 z-50 bg-white shadow-md">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
