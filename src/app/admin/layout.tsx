@@ -1,28 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { 
-  LayoutDashboard, 
-  Truck, 
-  Users, 
-  UserCircle, 
+import {
+  LayoutDashboard,
+  Truck,
+  Users,
+  UserCircle,
   Settings,
   Menu,
   X,
   LogOut,
   ChevronRight,
-  Home
+  Home,
+  User
 } from 'lucide-react'
-import { jwtDecode } from 'jwt-decode' // Changed to named import
-
-interface DecodedToken {
-  id: string;
-  email: string;
-  role: string;
-  exp: number;
-}
+import { useAuth } from '@/hooks/useAuth' // Adjust the import path
 
 export default function AdminLayout({
   children,
@@ -30,43 +24,24 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
+  const { isAuthenticated, userRole, logout } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
+  // Close dropdown when clicking outside
   useEffect(() => {
-    console.log('AdminLayout useEffect triggered')
-    const token = localStorage.getItem('admin_token')
-    const user_role = localStorage.getItem('user_role')
-    console.log('1Token found:', token ? 'Yes' : 'No')
-
-    if (!token) {
-      console.log('No token found, redirecting to /login')
-      router.push('/login')
-      return
-    }
-
-    try {
-      const decodedToken = jwtDecode<DecodedToken>(token)
-      console.log('Decoded token:', decodedToken)
-
-      if (user_role !== 'ADMIN') {
-        console.log('Role is not ADMIN, redirecting to /login')
-        router.push('/login')
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false)
       }
-      // Optionally, check token expiration
-      if (decodedToken.exp * 1000 < Date.now()) {
-        console.log('Token expired, removing token and redirecting to /login')
-        localStorage.removeItem('admin_token')
-        localStorage.removeItem('user_role')
-        router.push('/login')
-      }
-    } catch (error) {
-      console.error('Invalid token or decoding error:', error)
-      localStorage.removeItem('admin_token')
-      localStorage.removeItem('user_role')
-      router.push('/login')
     }
-  }, [router])
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -78,12 +53,6 @@ export default function AdminLayout({
 
   const isActive = (path: string) => {
     return pathname === path || pathname.startsWith(`${path}/`)
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token')
-    localStorage.removeItem('user_role')
-    router.push('/login')
   }
 
   return (
@@ -102,8 +71,10 @@ export default function AdminLayout({
           <div className="flex flex-col h-full">
             <div className="flex h-16 items-center justify-between px-4 border-b">
               <div className="flex items-center space-x-2">
-                <Truck className="h-8 w-8 text-primary-600" />
-                <span className="text-xl font-bold text-gray-800">Admin Panel</span>
+                <Link href="/" className="flex items-center space-x-2">
+                  <Truck className="h-8 w-8 text-primary-600" />
+                  <span className="text-2xl font-bold text-gray-800">VehicleSys</span>
+                </Link>
               </div>
               <button
                 onClick={() => setSidebarOpen(false)}
@@ -144,7 +115,7 @@ export default function AdminLayout({
                   <p className="text-xs text-gray-500">Administrator</p>
                 </div>
                 <button
-                  onClick={handleLogout}
+                  onClick={logout}
                   className="ml-auto text-gray-500 hover:text-red-600 transition-colors"
                   title="Logout"
                 >
@@ -171,7 +142,7 @@ export default function AdminLayout({
                   {navigation.find(item => isActive(item.href))?.name || 'Dashboard'}
                 </h1>
               </div>
-              
+
               <div className="flex items-center space-x-4">
                 <div className="relative">
                   <input
@@ -183,10 +154,38 @@ export default function AdminLayout({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                    <span className="text-gray-600 font-semibold">A</span>
-                  </div>
+                {/* Profile Dropdown */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                    className="flex items-center space-x-3 focus:outline-none"
+                  >
+                    <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                      <span className="text-gray-600 font-semibold">A</span>
+                    </div>
+                  </button>
+                  {profileDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                      <Link
+                        href="/admin/profile"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setProfileDropdownOpen(false)}
+                      >
+                        <User className="mr-2 h-4 w-4" />
+                        <span>User Profile</span>
+                      </Link>
+                      <button
+                        onClick={() => {
+                          logout()
+                          setProfileDropdownOpen(false)
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
