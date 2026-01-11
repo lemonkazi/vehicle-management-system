@@ -77,6 +77,38 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const body = await request.json()
+    const { status } = body
+
+    if (!status) {
+      return NextResponse.json({ success: false, error: 'Status is required' }, { status: 400 })
+    }
+
+    const updatedVehicle = await prisma.vehicle.update({
+      where: { id: parseInt(params.id) },
+      data: {
+        status: status,
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      data: updatedVehicle,
+    })
+  } catch (error) {
+    console.error('Error updating vehicle status:', error)
+    return NextResponse.json(
+      { success: false, error: 'Failed to update vehicle status' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }

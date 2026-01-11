@@ -43,6 +43,8 @@ interface Pagination {
   pages: number
 }
 
+const vehicleStatuses = ['AVAILABLE', 'BUSY', 'LOADING', 'UNLOADING']
+
 export default function AdminVehiclesPage() {
   const router = useRouter()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -82,6 +84,28 @@ export default function AdminVehiclesPage() {
     }
   }
 
+  const handleStatusChange = async (vehicleId: number, newStatus: string) => {
+    // Optimistically update the UI
+    setVehicles(vehicles.map(v => v.id === vehicleId ? { ...v, status: newStatus } : v))
+
+    try {
+      const response = await fetch(`/api/vehicles/${vehicleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      })
+
+      if (!response.ok) {
+        // Revert the change on failure
+        console.error("Failed to update status")
+        fetchVehicles(currentPage, searchTerm, selectedStatus, selectedType) // Refetch to get the real state
+      }
+    } catch (error) {
+      console.error('Error updating status:', error)
+      fetchVehicles(currentPage, searchTerm, selectedStatus, selectedType)
+    }
+  }
+
   const handleDelete = async () => {
     if (!vehicleToDelete) return
     
@@ -91,10 +115,8 @@ export default function AdminVehiclesPage() {
       })
       
       if (response.ok) {
-        setVehicles(vehicles.filter(v => v.id !== vehicleToDelete))
         setShowDeleteModal(false)
         setVehicleToDelete(null)
-        // Refetch to ensure data consistency after deletion
         fetchVehicles(currentPage, searchTerm, selectedStatus, selectedType)
       }
     } catch (error) {
@@ -104,16 +126,11 @@ export default function AdminVehiclesPage() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'loading':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'unloading':
-        return 'bg-blue-100 text-blue-800'
-      case 'available':
-        return 'bg-green-100 text-green-800'
-      case 'busy':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
+      case 'loading': return 'bg-yellow-100 text-yellow-800 ring-yellow-600/20'
+      case 'unloading': return 'bg-blue-100 text-blue-800 ring-blue-600/20'
+      case 'available': return 'bg-green-100 text-green-800 ring-green-600/20'
+      case 'busy': return 'bg-red-100 text-red-800 ring-red-600/20'
+      default: return 'bg-gray-100 text-gray-800 ring-gray-600/20'
     }
   }
 
@@ -194,17 +211,11 @@ export default function AdminVehiclesPage() {
           <p className="text-gray-600 mt-2">Manage all vehicles in the system</p>
         </div>
         <div className="flex space-x-3 mt-4 sm:mt-0">
-          <button
-            onClick={exportToCSV}
-            className="flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-          >
+          <button onClick={exportToCSV} className="flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </button>
-          <button
-            onClick={() => router.push('/admin/vehicles/new')}
-            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-          >
+          <button onClick={() => router.push('/admin/vehicles/new')} className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
             <Plus className="h-4 w-4 mr-2" />
             Add Vehicle
           </button>
@@ -240,10 +251,9 @@ export default function AdminVehiclesPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">All Status</option>
-              <option value="LOADING">Loading</option>
-              <option value="UNLOADING">Unloading</option>
-              <option value="AVAILABLE">Available</option>
-              <option value="BUSY">Busy</option>
+              {vehicleStatuses.map(status => (
+                <option key={status} value={status}>{status}</option>
+              ))}
             </select>
           </div>
           
@@ -286,43 +296,20 @@ export default function AdminVehiclesPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Vehicle
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  License No
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Location
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Driver
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">License No</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                  </td>
-                </tr>
+                <tr><td colSpan={7} className="text-center py-10">Loading...</td></tr>
               ) : vehicles.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
-                    <Truck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">No vehicles found</p>
-                  </td>
-                </tr>
+                <tr><td colSpan={7} className="text-center py-10">No vehicles found.</td></tr>
               ) : (
                 vehicles.map((vehicle) => (
                   <tr key={vehicle.id} className="hover:bg-gray-50">
@@ -332,60 +319,31 @@ export default function AdminVehiclesPage() {
                           <Truck className="h-6 w-6 text-gray-600" />
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {vehicle.vehicleLicenseNumber || 'N/A'}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {vehicle.engineNumber || 'No engine number'}
-                          </div>
+                          <div className="text-sm font-medium text-gray-900">{vehicle.vehicleLicenseNumber || 'N/A'}</div>
+                          <div className="text-sm text-gray-500">{vehicle.engineNumber || 'No engine number'}</div>
                         </div>
                       </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{vehicle.vehicleLicenseNumber}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{vehicle.vehicleType?.name || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{vehicle.vehicleLocation || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{vehicle.vehicleLicenseNumber}</div>
+                      <select
+                        value={vehicle.status}
+                        onChange={(e) => handleStatusChange(vehicle.id, e.target.value)}
+                        className={`w-full rounded-lg border-none text-xs font-medium focus:ring-2 focus:ring-primary-500 ${getStatusColor(vehicle.status)}`}
+                      >
+                        {vehicleStatuses.map(status => (
+                          <option key={status} value={status}>{status}</option>
+                        ))}
+                      </select>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {vehicle.vehicleType?.name || 'N/A'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{vehicle.vehicleLocation || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(vehicle.status)}`}>
-                        {vehicle.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{vehicle.driver?.name || 'N/A'}</div>
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{vehicle.driver?.name || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => router.push(`/admin/vehicles/${vehicle.id}`)}
-                          className="text-gray-500 hover:text-gray-700"
-                          title="View"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => router.push(`/admin/vehicles/${vehicle.id}/edit`)}
-                          className="text-blue-500 hover:text-blue-700"
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setVehicleToDelete(vehicle.id)
-                            setShowDeleteModal(true)
-                          }}
-                          className="text-red-500 hover:text-red-700"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <button onClick={() => router.push(`/admin/vehicles/${vehicle.id}`)} className="text-gray-500 hover:text-gray-700" title="View"><Eye className="h-4 w-4" /></button>
+                        <button onClick={() => router.push(`/admin/vehicles/${vehicle.id}/edit`)} className="text-blue-500 hover:text-blue-700" title="Edit"><Edit className="h-4 w-4" /></button>
+                        <button onClick={() => { setVehicleToDelete(vehicle.id); setShowDeleteModal(true); }} className="text-red-500 hover:text-red-700" title="Delete"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -398,7 +356,7 @@ export default function AdminVehiclesPage() {
         <PaginationComponent />
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
