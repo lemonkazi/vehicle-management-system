@@ -13,6 +13,7 @@
 
 # Static files
 /public/static
+/public/uploads/*
 
 # Environment variables
 .env.local

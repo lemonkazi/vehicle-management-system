@@ -10,7 +10,9 @@ import {
   Car,
   Package,
   ShieldPlus,
-  MoreVertical
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 
 interface VehicleType {
@@ -22,8 +24,17 @@ interface VehicleType {
   vehicles?: Array<{ id: number }>
 }
 
+interface Pagination {
+  page: number
+  limit: number
+  total: number
+  pages: number
+}
+
 export default function AdminVehicleTypesPage() {
   const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([])
+  const [pagination, setPagination] = useState<Pagination | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -34,15 +45,22 @@ export default function AdminVehicleTypesPage() {
   })
 
   useEffect(() => {
-    fetchVehicleTypes()
-  }, [])
+    fetchVehicleTypes(currentPage, searchTerm)
+  }, [currentPage, searchTerm])
 
-  const fetchVehicleTypes = async () => {
+  const fetchVehicleTypes = async (page: number, search: string) => {
+    setLoading(true)
     try {
-      const response = await fetch('/api/vehicle-types')
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '6', // 2x3 grid
+        search,
+      })
+      const response = await fetch(`/api/vehicle-types?${params.toString()}`)
       const data = await response.json()
       if (data.success) {
         setVehicleTypes(data.data)
+        setPagination(data.pagination)
       }
     } catch (error) {
       console.error('Error fetching vehicle types:', error)
@@ -50,12 +68,6 @@ export default function AdminVehicleTypesPage() {
       setLoading(false)
     }
   }
-
-  const filteredTypes = vehicleTypes.filter(type =>
-    !searchTerm ||
-    type.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    type.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
 
   const getIcon = (name: string) => {
     switch (name.toLowerCase()) {
@@ -87,20 +99,11 @@ export default function AdminVehicleTypesPage() {
         body: JSON.stringify(formData),
       })
       
-      const data = await response.json()
-      
-      if (data.success) {
-        if (editingType) {
-          setVehicleTypes(vehicleTypes.map(type => 
-            type.id === editingType.id ? data.data : type
-          ))
-        } else {
-          setVehicleTypes([...vehicleTypes, data.data])
-        }
-        
+      if (response.ok) {
         setFormData({ name: '', description: '' })
         setEditingType(null)
         setShowForm(false)
+        fetchVehicleTypes(currentPage, searchTerm)
       }
     } catch (error) {
       console.error('Error saving vehicle type:', error)
@@ -125,17 +128,49 @@ export default function AdminVehicleTypesPage() {
       })
       
       if (response.ok) {
-        setVehicleTypes(vehicleTypes.filter(type => type.id !== id))
+        fetchVehicleTypes(currentPage, searchTerm)
       }
     } catch (error) {
       console.error('Error deleting vehicle type:', error)
     }
   }
+  
+  const PaginationComponent = () => {
+    if (!pagination || pagination.total === 0) return null
 
-  if (loading) {
+    const { page, pages, total } = pagination
+    const startItem = (page - 1) * 6 + 1
+    const endItem = Math.min(page * 6, total)
+
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 mt-6">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{startItem}</span> to <span className="font-medium">{endItem}</span> of{' '}
+            <span className="font-medium">{total}</span> types
+          </div>
+          <div className="flex space-x-2">
+            <button 
+              onClick={() => setCurrentPage(p => p - 1)}
+              disabled={page === 1}
+              className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            
+            <span className="px-3 py-1 border border-gray-300 rounded text-sm bg-primary-50 text-primary-600 border-primary-300">
+              {page}
+            </span>
+
+            <button 
+              onClick={() => setCurrentPage(p => p + 1)}
+              disabled={page === pages}
+              className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -169,78 +204,91 @@ export default function AdminVehicleTypesPage() {
             type="text"
             placeholder="Search vehicle types..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setCurrentPage(1)
+            }}
             className="pl-10 pr-4 py-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>
 
       {/* Vehicle Types Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTypes.map((type) => (
-          <div key={type.id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center">
-                  <div className="h-12 w-12 rounded-lg bg-gray-100 flex items-center justify-center">
-                    {getIcon(type.name)}
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-bold text-gray-800">{type.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      {type.vehicles?.length || 0} vehicles
-                    </p>
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {vehicleTypes.length === 0 ? (
+               <div className="col-span-full text-center py-12">
+                <Truck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No vehicle types found</p>
+              </div>
+            ) : (
+              vehicleTypes.map((type) => (
+                <div key={type.id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center">
+                        <div className="h-12 w-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                          {getIcon(type.name)}
+                        </div>
+                        <div className="ml-4">
+                          <h3 className="text-lg font-bold text-gray-800">{type.name}</h3>
+                          <p className="text-sm text-gray-600">
+                            {type.vehicles?.length || 0} vehicles
+                          </p>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <button 
+                          onClick={(e) => {
+                            e.currentTarget.nextElementSibling?.classList.toggle('hidden')
+                          }}
+                          onBlur={(e) => {
+                            // Hide menu when focus is lost
+                            setTimeout(() => e.currentTarget.nextElementSibling?.classList.add('hidden'), 150)
+                          }}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <MoreVertical className="h-5 w-5" />
+                        </button>
+                        <div 
+                          className="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
+                        >
+                          <button
+                            onClick={() => handleEdit(type)}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(type.id)}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {type.description && (
+                      <p className="text-gray-600 mb-4">{type.description}</p>
+                    )}
+                    
+                    <div className="text-sm text-gray-500">
+                      Created: {new Date(type.createdAt).toLocaleDateString()}
+                    </div>
                   </div>
                 </div>
-                <div className="relative">
-                  <button 
-                    onClick={() => {
-                      const menu = document.getElementById(`menu-${type.id}`)
-                      if (menu) menu.classList.toggle('hidden')
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <MoreVertical className="h-5 w-5" />
-                  </button>
-                  <div 
-                    id={`menu-${type.id}`}
-                    className="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
-                  >
-                    <button
-                      onClick={() => {
-                        handleEdit(type)
-                        const menu = document.getElementById(`menu-${type.id}`)
-                        if (menu) menu.classList.add('hidden')
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleDelete(type.id)
-                        const menu = document.getElementById(`menu-${type.id}`)
-                        if (menu) menu.classList.add('hidden')
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              {type.description && (
-                <p className="text-gray-600 mb-4">{type.description}</p>
-              )}
-              
-              <div className="text-sm text-gray-500">
-                Created: {new Date(type.createdAt).toLocaleDateString()}
-              </div>
-            </div>
+              ))
+            )}
           </div>
-        ))}
-      </div>
+          <PaginationComponent />
+        </>
+      )}
 
       {/* Add/Edit Form Modal */}
       {showForm && (

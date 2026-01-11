@@ -7,26 +7,42 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type')
     const location = searchParams.get('location')
     const status = searchParams.get('status')
+    const search = searchParams.get('search')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
 
     const skip = (page - 1) * limit
 
-    const where: any = {}
-
-    if (type) {
-      where.vehicleTypeId = parseInt(type)
-    }
-
-    if (location) {
-      where.vehicleLocation = {
-        contains: location,
-        mode: 'insensitive' as const,
-      }
-    }
+    let where: any = {}
 
     if (status) {
       where.status = status.toUpperCase()
+    }
+
+    if (type) {
+      where.vehicleType = {
+        name: {
+          contains: type,
+          mode: 'insensitive'
+        }
+      }
+    }
+    
+    if (location) {
+      where.vehicleLocation = {
+        contains: location,
+        mode: 'insensitive'
+      }
+    }
+    
+    if (search) {
+      where.OR = [
+        { vehicleLicenseNumber: { contains: search, mode: 'insensitive' } },
+        { engineNumber: { contains: search, mode: 'insensitive' } },
+        { chassisNumber: { contains: search, mode: 'insensitive' } },
+        { vehicleType: { name: { contains: search, mode: 'insensitive' } } },
+        { serviceArea: { contains: search, mode: 'insensitive' } }
+      ]
     }
 
     const [vehicles, total] = await Promise.all([

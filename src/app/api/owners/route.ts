@@ -3,20 +3,47 @@ import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const owners = await prisma.owner.findMany({
-      include: {
-        vehicles: {
-          select: { id: true }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+    const searchParams = request.nextUrl.searchParams
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const search = searchParams.get('search') || ''
+
+    const skip = (page - 1) * limit
+
+    const where: any = search ? {
+      OR: [
+        { name: { contains: search, mode: 'insensitive' } },
+        { contractNumber: { contains: search, mode: 'insensitive' } },
+        { nidNumber: { contains: search, mode: 'insensitive' } },
+      ],
+    } : {}
+
+    const [owners, total] = await Promise.all([
+      prisma.owner.findMany({
+        where,
+        include: {
+          vehicles: {
+            select: { id: true }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: limit,
+        skip: skip,
+      }),
+      prisma.owner.count({ where })
+    ])
 
     return NextResponse.json({
       success: true,
-      data: owners
+      data: owners,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      }
     })
   } catch (error) {
     console.error('Error fetching owners:', error)

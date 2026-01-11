@@ -55,12 +55,6 @@ export default function Header() {
             {/* Search and Actions */}
             <div className="hidden md:flex items-center space-x-4">
               <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search vehicles..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-                <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               </div>
               {isAuthenticated ? (
                 <>

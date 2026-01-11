@@ -17,7 +17,7 @@ const slides = [
     id: 2,
     title: 'Efficient Loading Services',
     description: 'Professional loading services with modern equipment and trained staff',
-    image: 'https://images.unsplash.com/photo-1606583994254-8c9dac6c6c6d?auto=format&fit=crop&w=1600',
+    image: 'https://images.unsplash.com/photo-1644316552207-c2747cd2881d?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D?auto=format&fit=crop&w=1600',
     buttonText: 'Learn More',
     buttonLink: '/services'
   },

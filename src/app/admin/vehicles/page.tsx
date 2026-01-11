@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   Plus, 
@@ -11,7 +11,9 @@ import {
   Eye,
   MoreVertical,
   Download,
-  Truck
+  Truck,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 
 interface Vehicle {
@@ -34,9 +36,18 @@ interface Vehicle {
   }
 }
 
+interface Pagination {
+  page: number
+  limit: number
+  total: number
+  pages: number
+}
+
 export default function AdminVehiclesPage() {
   const router = useRouter()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [pagination, setPagination] = useState<Pagination | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
@@ -45,15 +56,24 @@ export default function AdminVehiclesPage() {
   const [vehicleToDelete, setVehicleToDelete] = useState<number | null>(null)
 
   useEffect(() => {
-    fetchVehicles()
-  }, [])
+    fetchVehicles(currentPage, searchTerm, selectedStatus, selectedType)
+  }, [currentPage, searchTerm, selectedStatus, selectedType])
 
-  const fetchVehicles = async () => {
+  const fetchVehicles = async (page: number, search: string, status: string, type: string) => {
+    setLoading(true)
     try {
-      const response = await fetch('/api/vehicles')
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10',
+        search,
+        status,
+        type
+      })
+      const response = await fetch(`/api/vehicles?${params.toString()}`)
       const data = await response.json()
       if (data.success) {
         setVehicles(data.data)
+        setPagination(data.pagination)
       }
     } catch (error) {
       console.error('Error fetching vehicles:', error)
@@ -61,19 +81,6 @@ export default function AdminVehiclesPage() {
       setLoading(false)
     }
   }
-
-  const filteredVehicles = vehicles.filter(vehicle => {
-    const matchesSearch = !searchTerm || 
-      vehicle.vehicleLicenseNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.engineNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.chassisNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.vehicleType?.name.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesStatus = !selectedStatus || vehicle.status === selectedStatus
-    const matchesType = !selectedType || vehicle.vehicleType?.name === selectedType
-    
-    return matchesSearch && matchesStatus && matchesType
-  })
 
   const handleDelete = async () => {
     if (!vehicleToDelete) return
@@ -87,6 +94,8 @@ export default function AdminVehiclesPage() {
         setVehicles(vehicles.filter(v => v.id !== vehicleToDelete))
         setShowDeleteModal(false)
         setVehicleToDelete(null)
+        // Refetch to ensure data consistency after deletion
+        fetchVehicles(currentPage, searchTerm, selectedStatus, selectedType)
       }
     } catch (error) {
       console.error('Error deleting vehicle:', error)
@@ -110,7 +119,7 @@ export default function AdminVehiclesPage() {
 
   const exportToCSV = () => {
     const headers = ['ID', 'License Number', 'Type', 'Engine No', 'Chassis No', 'Capacity', 'Location', 'Status', 'Driver', 'Owner']
-    const csvData = filteredVehicles.map(v => [
+    const csvData = vehicles.map(v => [
       v.id,
       v.vehicleLicenseNumber || '',
       v.vehicleType?.name || '',
@@ -135,11 +144,43 @@ export default function AdminVehiclesPage() {
     a.download = 'vehicles.csv'
     a.click()
   }
+  
+  const PaginationComponent = () => {
+    if (!pagination || pagination.total === 0) return null
 
-  if (loading) {
+    const { page, pages, total } = pagination
+    const startItem = (page - 1) * 10 + 1
+    const endItem = Math.min(page * 10, total)
+
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{startItem}</span> to <span className="font-medium">{endItem}</span> of{' '}
+            <span className="font-medium">{total}</span> vehicles
+          </div>
+          <div className="flex space-x-2">
+            <button 
+              onClick={() => setCurrentPage(p => p - 1)}
+              disabled={page === 1}
+              className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            
+            <span className="px-3 py-1 border border-gray-300 rounded text-sm bg-primary-50 text-primary-600 border-primary-300">
+              {page}
+            </span>
+
+            <button 
+              onClick={() => setCurrentPage(p => p + 1)}
+              disabled={page === pages}
+              className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -220,7 +261,6 @@ export default function AdminVehiclesPage() {
               <option value="Pickup">Pickup</option>
               <option value="Lorry">Lorry</option>
               <option value="Car">Car</option>
-              <option value="Car">Car</option>
             </select>
           </div>
           
@@ -230,6 +270,7 @@ export default function AdminVehiclesPage() {
                 setSearchTerm('')
                 setSelectedStatus('')
                 setSelectedType('')
+                setCurrentPage(1)
               }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
             >
@@ -269,7 +310,13 @@ export default function AdminVehiclesPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredVehicles.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+                  </td>
+                </tr>
+              ) : vehicles.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center">
                     <Truck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -277,7 +324,7 @@ export default function AdminVehiclesPage() {
                   </td>
                 </tr>
               ) : (
-                filteredVehicles.map((vehicle) => (
+                vehicles.map((vehicle) => (
                   <tr key={vehicle.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -316,7 +363,7 @@ export default function AdminVehiclesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => router.push(`/vehicles/${vehicle.id}`)}
+                          onClick={() => router.push(`/admin/vehicles/${vehicle.id}`)}
                           className="text-gray-500 hover:text-gray-700"
                           title="View"
                         >
@@ -348,29 +395,7 @@ export default function AdminVehiclesPage() {
           </table>
         </div>
         
-        {/* Pagination */}
-        <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Showing <span className="font-medium">{filteredVehicles.length}</span> of{' '}
-              <span className="font-medium">{vehicles.length}</span> vehicles
-            </div>
-            <div className="flex space-x-2">
-              <button className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">
-                Previous
-              </button>
-              <button className="px-3 py-1 border border-gray-300 rounded text-sm bg-primary-50 text-primary-600 border-primary-300">
-                1
-              </button>
-              <button className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">
-                2
-              </button>
-              <button className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">
-                Next
-              </button>
-            </div>
-          </div>
-        </div>
+        <PaginationComponent />
       </div>
 
       {/* Delete Confirmation Modal */}

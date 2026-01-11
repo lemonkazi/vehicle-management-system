@@ -12,7 +12,8 @@ import {
   MapPin,
   FileText,
   UserCircle,
-  Mail
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 
 interface Owner {
@@ -27,22 +28,38 @@ interface Owner {
   vehicles?: Array<{ id: number }>
 }
 
+interface Pagination {
+  page: number
+  limit: number
+  total: number
+  pages: number
+}
+
 export default function AdminOwnersPage() {
   const router = useRouter()
   const [owners, setOwners] = useState<Owner[]>([])
+  const [pagination, setPagination] = useState<Pagination | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
-    fetchOwners()
-  }, [])
+    fetchOwners(currentPage, searchTerm)
+  }, [currentPage, searchTerm])
 
-  const fetchOwners = async () => {
+  const fetchOwners = async (page: number, search: string) => {
+    setLoading(true)
     try {
-      const response = await fetch('/api/owners')
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10',
+        search,
+      })
+      const response = await fetch(`/api/owners?${params.toString()}`)
       const data = await response.json()
       if (data.success) {
         setOwners(data.data)
+        setPagination(data.pagination)
       }
     } catch (error) {
       console.error('Error fetching owners:', error)
@@ -50,13 +67,6 @@ export default function AdminOwnersPage() {
       setLoading(false)
     }
   }
-
-  const filteredOwners = owners.filter(owner =>
-    !searchTerm ||
-    owner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    owner.contractNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    owner.nidNumber?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
 
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this owner?')) return
@@ -67,17 +77,49 @@ export default function AdminOwnersPage() {
       })
       
       if (response.ok) {
-        setOwners(owners.filter(o => o.id !== id))
+        fetchOwners(currentPage, searchTerm)
       }
     } catch (error) {
       console.error('Error deleting owner:', error)
     }
   }
+  
+  const PaginationComponent = () => {
+    if (!pagination || pagination.total === 0) return null
 
-  if (loading) {
+    const { page, pages, total } = pagination
+    const startItem = (page - 1) * 10 + 1
+    const endItem = Math.min(page * 10, total)
+
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{startItem}</span> to <span className="font-medium">{endItem}</span> of{' '}
+            <span className="font-medium">{total}</span> owners
+          </div>
+          <div className="flex space-x-2">
+            <button 
+              onClick={() => setCurrentPage(p => p - 1)}
+              disabled={page === 1}
+              className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            
+            <span className="px-3 py-1 border border-gray-300 rounded text-sm bg-primary-50 text-primary-600 border-primary-300">
+              {page}
+            </span>
+
+            <button 
+              onClick={() => setCurrentPage(p => p + 1)}
+              disabled={page === pages}
+              className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -107,7 +149,10 @@ export default function AdminOwnersPage() {
             type="text"
             placeholder="Search owners by name, phone, or NID..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setCurrentPage(1)
+            }}
             className="pl-10 pr-4 py-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
@@ -140,7 +185,13 @@ export default function AdminOwnersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredOwners.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+                  </td>
+                </tr>
+              ) : owners.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
                     <UserCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -148,7 +199,7 @@ export default function AdminOwnersPage() {
                   </td>
                 </tr>
               ) : (
-                filteredOwners.map((owner) => (
+                owners.map((owner) => (
                   <tr key={owner.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -201,6 +252,13 @@ export default function AdminOwnersPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-3">
                         <button
+                          onClick={() => router.push(`/admin/owners/${owner.id}`)}
+                          className="text-gray-500 hover:text-gray-700"
+                          title="View"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
                           onClick={() => router.push(`/admin/owners/${owner.id}/edit`)}
                           className="text-blue-500 hover:text-blue-700"
                           title="Edit"
@@ -222,6 +280,7 @@ export default function AdminOwnersPage() {
             </tbody>
           </table>
         </div>
+        <PaginationComponent />
       </div>
     </div>
   )

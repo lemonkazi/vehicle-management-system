@@ -1,27 +1,89 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import ImageSlider from '@/components/ImageSlider'
 import VehicleList from '@/components/VehicleList'
 import Sidebar from '@/components/Sidebar'
-import { prisma } from '@/lib/db'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 60 // Revalidate every 60 seconds
+interface Vehicle {
+  id: number
+  vehicleLicenseNumber?: string
+  status: string
+  vehiclePic?: string
+  vehicleType?: {
+    name: string
+  }
+  vehicleLocation?: string
+  serviceArea?: string
+}
 
-export default async function Home() {
-  // Fetch featured vehicles for the homepage
-  const featuredVehicles = await prisma.vehicle.findMany({
-    take: 6,
-    include: {
-      vehicleType: true,
-      driver: true,
-      owner: true,
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
+interface VehicleType {
+  id: number
+  name: string
+}
+
+export default function Home() {
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([])
+  const [loading, setLoading] = useState(true)
+  
+  const [filters, setFilters] = useState({
+    type: '',
+    location: '',
+    status: 'AVAILABLE' // Default to available for public view
   })
 
-  // Fetch vehicle types for filtering
-  const vehicleTypes = await prisma.vehicleType.findMany()
+  useEffect(() => {
+    // Fetch initial data
+    fetchVehicleTypes()
+    fetchAndSetVehicles()
+  }, [])
+
+  const fetchVehicleTypes = async () => {
+    try {
+      const response = await fetch('/api/vehicle-types?limit=100')
+      const data = await response.json()
+      if (data.success) {
+        setVehicleTypes(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching vehicle types:', error)
+    }
+  }
+
+  const fetchAndSetVehicles = async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({
+        page: '1',
+        limit: '6',
+        type: filters.type,
+        location: filters.location,
+        status: filters.status,
+      })
+      const response = await fetch(`/api/vehicles?${params.toString()}`)
+      const data = await response.json()
+      if (data.success) {
+        setVehicles(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching vehicles:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFilters({
+      ...filters,
+      [e.target.name]: e.target.value
+    })
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    fetchAndSetVehicles()
+  }
 
   return (
     <>
@@ -36,17 +98,17 @@ export default async function Home() {
           <div className="lg:w-3/4">
             {/* Search and Filter Section */}
             <div className="mb-8">
-              <div className="bg-white p-6 rounded-lg shadow-md">
+              <form onSubmit={handleSearch} className="bg-white p-6 rounded-lg shadow-md">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Find Your Vehicle</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Vehicle Type
                     </label>
-                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <select name="type" value={filters.type} onChange={handleFilterChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
                       <option value="">All Types</option>
                       {vehicleTypes.map((type) => (
-                        <option key={type.id} value={type.id}>
+                        <option key={type.id} value={type.name}>
                           {type.name}
                         </option>
                       ))}
@@ -58,7 +120,10 @@ export default async function Home() {
                     </label>
                     <input
                       type="text"
+                      name="location"
                       placeholder="Enter location..."
+                      value={filters.location}
+                      onChange={handleFilterChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -66,60 +131,31 @@ export default async function Home() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Status
                     </label>
-                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <select name="status" value={filters.status} onChange={handleFilterChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
                       <option value="">All Status</option>
-                      <option value="available">Available</option>
-                      <option value="loading">Loading</option>
-                      <option value="unloading">Unloading</option>
+                      <option value="AVAILABLE">Available</option>
+                      <option value="BUSY">Busy</option>
                     </select>
                   </div>
                   <div className="md:col-span-3">
-                    <button className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium">
+                    <button type="submit" className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium">
                       Search Vehicles
                     </button>
                   </div>
                 </div>
-              </div>
+              </form>
             </div>
 
             {/* Vehicle List Section */}
             <section>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-3xl font-bold text-gray-800">Available Vehicles</h2>
-                <span className="text-gray-600">
-                  Showing {featuredVehicles.length} vehicles
-                </span>
+                <h2 className="text-3xl font-bold text-gray-800">Featured Vehicles</h2>
               </div>
-              <VehicleList vehicles={featuredVehicles} />
-            </section>
-
-            {/* About Section */}
-            <section className="mt-16">
-              <div className="bg-gradient-to-r from-primary-50 to-primary-100 p-8 rounded-2xl">
-                <h2 className="text-3xl font-bold text-gray-800 mb-4">
-                  About Our Vehicle Management System
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-3">Loading Vehicles</h3>
-                    <p className="text-gray-600">
-                      Efficient loading services with trained professionals and modern equipment.
-                    </p>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-3">Unloading Vehicles</h3>
-                    <p className="text-gray-600">
-                      Safe and quick unloading services for all types of vehicles and cargo.
-                    </p>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-3">Vehicle Types</h3>
-                    <p className="text-gray-600">
-                      Wide range of vehicles including trucks, pickups, lorries, and more.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              {loading ? (
+                <div className="text-center py-10">Loading vehicles...</div>
+              ) : (
+                <VehicleList vehicles={vehicles} />
+              )}
             </section>
           </div>
 
