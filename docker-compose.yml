@@ -1,69 +1,74 @@
 version: "3.8"
 
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: vehicle-mysql
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: vehicle_db
-      MYSQL_USER: vehicle_user
-      MYSQL_PASSWORD: vehicle_password
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - vehicle-network
-    command: --default-authentication-plugin=mysql_native_password --innodb-redo-log-capacity=0
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
-      timeout: 20s
-      retries: 10
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: vehicle-mysql
+  #   restart: always
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: rootpassword
+  #     MYSQL_DATABASE: vehicle_db
+  #     MYSQL_USER: vehicle_user
+  #     MYSQL_PASSWORD: vehicle_password
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #   networks:
+  #     - vehicle-network
+  #   command: --default-authentication-plugin=mysql_native_password --innodb-redo-log-capacity=0
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
+  #     timeout: 20s
+  #     retries: 10
 
   app:
     image: vehicle-app-dev
     build:
       context: .
       args:
-        DATABASE_URL: mysql://vehicle_user:vehicle_password@mysql:3306/vehicle_db
+        DATABASE_URL: mysql://vehicle_user:vehicle_password@shared_mysql:3306/vehicle_db
+        # DATABASE_URL: mysql://vehicle_user:vehicle_password@mysql:3306/vehicle_db
     container_name: vehicle-app
     restart: always
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: mysql://vehicle_user:vehicle_password@mysql:3306/vehicle_db
+      DATABASE_URL: mysql://vehicle_user:vehicle_password@shared_mysql:3306/vehicle_db
+      # DATABASE_URL: mysql://vehicle_user:vehicle_password@mysql:3306/vehicle_db
       NEXTAUTH_SECRET: your-secret-key-here-change-this-in-production
       NEXTAUTH_URL: http://localhost:3000
       JWT_SECRET: your-jwt-secret-key-change-this
     # volumes:
     #   - .:/app
     #   - /app/node_modules
-    depends_on:
-      mysql:
-        condition: service_healthy
+    # depends_on:
+    #   mysql:
+    #     condition: service_healthy
     networks:
       - vehicle-network
+      - shared_services
     command: npm run dev
 
-  phpmyadmin:
-    image: phpmyadmin
-    container_name: vehicle-phpmyadmin
-    restart: always
-    ports:
-      - "8080:80"
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-    depends_on:
-      - mysql
-    networks:
-      - vehicle-network
+  # phpmyadmin:
+  #   image: phpmyadmin
+  #   container_name: vehicle-phpmyadmin
+  #   restart: always
+  #   ports:
+  #     - "8080:80"
+  #   environment:
+  #     PMA_HOST: mysql
+  #     PMA_PORT: 3306
+  #   depends_on:
+  #     - mysql
+  #   networks:
+  #     - vehicle-network
 
 networks:
   vehicle-network:
     driver: bridge
+  shared_services:
+    external: true
 
 volumes:
   mysql_data:
