@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
-async function getDriver(request: NextRequest, id: number) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const driver = await prisma.driver.findUnique({
-      where: { id },
-      include: {
-        vehicles: true
-      }
+      where: { id: params.id },
     })
 
     if (!driver) {
@@ -17,12 +17,27 @@ async function getDriver(request: NextRequest, id: number) {
       )
     }
 
+    const vehicles = await prisma.vehicle.findMany({
+      where: { driverId: params.id },
+    })
+
+    const vehiclesWithDetails = await Promise.all(
+      vehicles.map(async (vehicle) => {
+        const vehicleType = vehicle.vehicleTypeId
+          ? await prisma.vehicleType.findUnique({
+              where: { id: vehicle.vehicleTypeId },
+            })
+          : null
+        return { ...vehicle, vehicleType }
+      })
+    )
+
     return NextResponse.json({
       success: true,
-      data: driver
+      data: { ...driver, vehicles: vehiclesWithDetails },
     })
   } catch (error) {
-    console.error(`Error fetching driver ${id}:`, error)
+    console.error('Error fetching driver:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to fetch driver' },
       { status: 500 }
@@ -30,13 +45,15 @@ async function getDriver(request: NextRequest, id: number) {
   }
 }
 
-
-async function updateDriver(request: NextRequest, id: number) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const body = await request.json()
 
-    const updatedDriver = await prisma.driver.update({
-      where: { id },
+    const driver = await prisma.driver.update({
+      where: { id: params.id },
       data: {
         name: body.name,
         contractNumber: body.contractNumber,
@@ -46,22 +63,16 @@ async function updateDriver(request: NextRequest, id: number) {
         permanentAddress: body.permanentAddress,
         drivingLicenseNumber: body.drivingLicenseNumber,
         experienceDuration: body.experienceDuration,
-        picture: body.picture
-      }
+        picture: body.picture,
+      },
     })
 
     return NextResponse.json({
       success: true,
-      data: updatedDriver
+      data: driver,
     })
-  } catch (error: any) {
-    console.error(`Error updating driver ${id}:`, error)
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { success: false, error: 'Driver not found' },
-        { status: 404 }
-      )
-    }
+  } catch (error) {
+    console.error('Error updating driver:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to update driver' },
       { status: 500 }
@@ -69,60 +80,24 @@ async function updateDriver(request: NextRequest, id: number) {
   }
 }
 
-async function deleteDriver(request: NextRequest, id: number) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     await prisma.driver.delete({
-      where: { id }
+      where: { id: params.id },
     })
 
-    return new Response(null, { status: 204 })
-  } catch (error: any) {
-    console.error(`Error deleting driver ${id}:`, error)
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { success: false, error: 'Driver not found' },
-        { status: 404 }
-      )
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Driver deleted successfully',
+    })
+  } catch (error) {
+    console.error('Error deleting driver:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to delete driver' },
       { status: 500 }
     )
   }
-}
-
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const id = parseInt(params.id, 10)
-
-  if (isNaN(id)) {
-    return NextResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 })
-  }
-  return await getDriver(request, id)
-}
-
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const id = parseInt(params.id, 10)
-
-  if (isNaN(id)) {
-    return NextResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 })
-  }
-  return await updateDriver(request, id)
-}
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const id = parseInt(params.id, 10)
-
-  if (isNaN(id)) {
-    return NextResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 })
-  }
-  return await deleteDriver(request, id)
 }

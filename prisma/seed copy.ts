@@ -4,13 +4,11 @@ import bcrypt from 'bcryptjs'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌱 Starting MongoDB seed...')
+  console.log('🌱 Starting seed...')
 
-  /* =======================
-     Admin User
-  ======================= */
+  // Create admin user
   const hashedPassword = await bcrypt.hash('admin123', 10)
-
+  
   const admin = await prisma.user.upsert({
     where: { email: 'admin@vehicle.com' },
     update: {},
@@ -21,12 +19,9 @@ async function main() {
       role: 'ADMIN'
     }
   })
+  console.log('✅ Created admin user:', admin.email)
 
-  console.log('✅ Admin user:', admin.email)
-
-  /* =======================
-     Vehicle Types
-  ======================= */
+  // Create vehicle types
   const vehicleTypes = [
     { name: 'Truck', description: 'Heavy duty trucks for transportation' },
     { name: 'Pickup', description: 'Light pickup vehicles' },
@@ -37,18 +32,15 @@ async function main() {
   ]
 
   for (const type of vehicleTypes) {
-    await prisma.vehicleType.upsert({
+    const vehicleType = await prisma.vehicleType.upsert({
       where: { name: type.name },
       update: {},
       create: type
     })
+    console.log(`✅ Created vehicle type: ${vehicleType.name}`)
   }
 
-  console.log('✅ Vehicle types seeded')
-
-  /* =======================
-     Drivers
-  ======================= */
+  // Create sample drivers
   const drivers = [
     {
       name: 'John Smith',
@@ -73,18 +65,15 @@ async function main() {
   ]
 
   for (const driver of drivers) {
-    await prisma.driver.upsert({
-      where: { contractNumber: driver.contractNumber },
-      update: {},
+    const createdDriver = await prisma.driver.upsert({
+      where: { contractNumber: driver.contractNumber }, // Unique constraint field
+      update: {}, // Update nothing if exists (or specify fields to update)
       create: driver
     })
+    console.log(`✅ Upserted driver: ${createdDriver.name}`)
   }
 
-  console.log('✅ Drivers seeded')
-
-  /* =======================
-     Owners
-  ======================= */
+  // Create sample owners - FIXED: Use upsert instead of create
   const owners = [
     {
       name: 'Transport Ltd.',
@@ -105,68 +94,81 @@ async function main() {
   ]
 
   for (const owner of owners) {
-    await prisma.owner.upsert({
-      where: { contractNumber: owner.contractNumber },
-      update: {},
+    const createdOwner = await prisma.owner.upsert({
+      where: { contractNumber: owner.contractNumber }, // Unique constraint field
+      update: {}, // Update nothing if exists (or specify fields to update)
       create: owner
     })
+    console.log(`✅ Upserted owner: ${createdOwner.name}`)
   }
 
-  console.log('✅ Owners seeded')
-
-  /* =======================
-     Vehicles
-  ======================= */
-  const vehicleTypesDb = await prisma.vehicleType.findMany()
-  const driversDb = await prisma.driver.findMany()
-  const ownersDb = await prisma.owner.findMany()
+  // Create sample vehicles - FIXED: Use upsert instead of create
+  const vehicleTypeIds = await prisma.vehicleType.findMany({
+    select: { id: true, name: true }
+  })
+  
+  const driverIds = await prisma.driver.findMany({
+    select: { id: true, contractNumber: true }
+  })
+  
+  const ownerIds = await prisma.owner.findMany({
+    select: { id: true, contractNumber: true }
+  })
 
   const vehicles = [
     {
+      vehicleTypeId: vehicleTypeIds.find(v => v.name === 'Truck')?.id,
       engineNumber: 'ENG123456',
       chassisNumber: 'CHS123456',
       vehicleLicenseNumber: 'DHAKA-1234',
       vehicleCapacity: '10 tons',
       vehicleLocation: 'Dhaka',
       serviceArea: 'Dhaka Division',
-      status: 'AVAILABLE',
-      vehicleTypeId: vehicleTypesDb.find(v => v.name === 'Truck')?.id,
-      driverId: driversDb.find(d => d.contractNumber === '+1234567890')?.id,
-      ownerId: ownersDb.find(o => o.contractNumber === '+1122334455')?.id
+      status: 'AVAILABLE' as const,
+      driverId: driverIds.find(d => d.contractNumber === '+1234567890')?.id,
+      ownerId: ownerIds.find(o => o.contractNumber === '+1122334455')?.id
     },
     {
+      vehicleTypeId: vehicleTypeIds.find(v => v.name === 'Pickup')?.id,
       engineNumber: 'ENG789012',
       chassisNumber: 'CHS789012',
       vehicleLicenseNumber: 'CTG-5678',
       vehicleCapacity: '1 ton',
       vehicleLocation: 'Chittagong',
       serviceArea: 'Chittagong Division',
-      status: 'LOADING',
-      vehicleTypeId: vehicleTypesDb.find(v => v.name === 'Pickup')?.id,
-      driverId: driversDb.find(d => d.contractNumber === '+9876543210')?.id,
-      ownerId: ownersDb.find(o => o.contractNumber === '+9988776655')?.id
+      status: 'LOADING' as const,
+      driverId: driverIds.find(d => d.contractNumber === '+9876543210')?.id,
+      ownerId: ownerIds.find(o => o.contractNumber === '+9988776655')?.id
+    },
+    {
+      vehicleTypeId: vehicleTypeIds.find(v => v.name === 'Lorry')?.id,
+      engineNumber: 'ENG345678',
+      chassisNumber: 'CHS345678',
+      vehicleLicenseNumber: 'SYL-9012',
+      vehicleCapacity: '8 tons',
+      vehicleLocation: 'Sylhet',
+      serviceArea: 'Sylhet Division',
+      status: 'UNLOADING' as const,
+      driverId: driverIds.find(d => d.contractNumber === '+1234567890')?.id,
+      ownerId: ownerIds.find(o => o.contractNumber === '+1122334455')?.id
     }
   ]
 
   for (const vehicle of vehicles) {
-    if (!vehicle.vehicleTypeId || !vehicle.driverId || !vehicle.ownerId) {
-      throw new Error('Invalid vehicle reference detected')
-    }
-
-    await prisma.vehicle.upsert({
-      where: { engineNumber: vehicle.engineNumber },
-      update: {},
+    const createdVehicle = await prisma.vehicle.upsert({
+      where: { engineNumber: vehicle.engineNumber }, // Assuming engineNumber is unique
+      update: {}, // Update nothing if exists (or specify fields to update)
       create: vehicle
     })
+    console.log(`✅ Upserted vehicle: ${createdVehicle.vehicleLicenseNumber}`)
   }
 
-  console.log('✅ Vehicles seeded')
-  console.log('🌱 MongoDB seed completed successfully')
+  console.log('🌱 Seed completed successfully!')
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed error:', e)
+    console.error('❌ Error during seeding:', e)
     process.exit(1)
   })
   .finally(async () => {

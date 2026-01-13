@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "src/app/api/**/route.ts": {
+      "includeFiles": "prisma/schema.prisma"
+    }
+  }
+}

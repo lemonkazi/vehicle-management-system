@@ -2,12 +2,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Search, MapPin, Truck } from 'lucide-react'
 import VehicleCard from '@/components/VehicleCard' // Assuming this component exists and is styled for public view
 
 interface Vehicle {
-  id: number
+  id: string
   vehicleLicenseNumber?: string
   status: string
   vehiclePic?: string
@@ -18,6 +18,11 @@ interface Vehicle {
   serviceArea?: string
 }
 
+interface VehicleType {
+  id: string
+  name: string
+}
+
 interface Pagination {
   page: number
   pages: number
@@ -26,18 +31,41 @@ interface Pagination {
 
 export default function VehiclesPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([])
   const [pagination, setPagination] = useState<Pagination | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [locationFilter, setLocationFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
 
   useEffect(() => {
-    fetchVehicles(currentPage, searchTerm, locationFilter)
-  }, [currentPage, searchTerm, locationFilter])
+    const type = searchParams.get('type')
+    if (type) {
+      setTypeFilter(type)
+    }
+  }, [searchParams])
 
-  const fetchVehicles = async (page: number, search: string, location: string) => {
+  useEffect(() => {
+    fetchVehicleTypes()
+    fetchVehicles(currentPage, searchTerm, locationFilter, typeFilter)
+  }, [currentPage, searchTerm, locationFilter, typeFilter])
+
+  const fetchVehicleTypes = async () => {
+    try {
+      const response = await fetch('/api/vehicle-types')
+      const data = await response.json()
+      if (data.success) {
+        setVehicleTypes(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching vehicle types:', error)
+    }
+  }
+
+  const fetchVehicles = async (page: number, search: string, location: string, type: string) => {
     setLoading(true)
     try {
       const params = new URLSearchParams({
@@ -45,6 +73,7 @@ export default function VehiclesPage() {
         limit: '9',
         search,
         location,
+        type,
         status: 'AVAILABLE' // Public users should only see available vehicles
       })
       const response = await fetch(`/api/vehicles?${params.toString()}`)
@@ -73,8 +102,8 @@ export default function VehiclesPage() {
 
         {/* Filter and Search Bar */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-12 sticky top-20 z-40">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative md:col-span-1">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
@@ -93,6 +122,21 @@ export default function VehiclesPage() {
                 onChange={(e) => setLocationFilter(e.target.value)}
                 className="pl-12 pr-4 py-3 w-full border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
+            </div>
+            <div className="relative">
+              <Truck className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="pl-12 pr-4 py-3 w-full border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">All Types</option>
+                {vehicleTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

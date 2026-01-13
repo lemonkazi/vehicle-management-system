@@ -13,7 +13,8 @@ import {
   FileText,
   UserCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Eye
 } from 'lucide-react'
 
 interface Owner {

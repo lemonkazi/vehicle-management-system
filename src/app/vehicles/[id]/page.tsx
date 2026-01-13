@@ -5,12 +5,7 @@ import { Truck, MapPin, Users, Calendar, Phone, Mail, Building, Shield, Clock, H
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const vehicle = await prisma.vehicle.findUnique({
-    where: { id: parseInt(params.id) },
-    include: {
-      vehicleType: true,
-      driver: true,
-      owner: true,
-    },
+    where: { id: params.id },
   })
 
   if (!vehicle) {
@@ -20,9 +15,13 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
     }
   }
 
+  const vehicleType = vehicle.vehicleTypeId
+    ? await prisma.vehicleType.findUnique({ where: { id: vehicle.vehicleTypeId } })
+    : null
+
   return {
-    title: `${vehicle.vehicleType?.name || 'Vehicle'} - ${vehicle.vehicleLicenseNumber || 'Details'}`,
-    description: `${vehicle.vehicleType?.name} available for ${vehicle.status.toLowerCase()} at ${vehicle.vehicleLocation}. Capacity: ${vehicle.vehicleCapacity}`,
+    title: `${vehicleType?.name || 'Vehicle'} - ${vehicle.vehicleLicenseNumber || 'Details'}`,
+    description: `${vehicleType?.name} available for ${vehicle.status.toLowerCase()} at ${vehicle.vehicleLocation}. Capacity: ${vehicle.vehicleCapacity}`,
     openGraph: {
       images: [vehicle.vehiclePic || '/default-vehicle.jpg'],
     },
@@ -30,14 +29,27 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 }
 
 export default async function VehiclePage({ params }: { params: { id: string } }) {
-  const vehicle = await prisma.vehicle.findUnique({
-    where: { id: parseInt(params.id) },
-    include: {
-      vehicleType: true,
-      driver: true,
-      owner: true,
-    },
+  const vehicleData = await prisma.vehicle.findUnique({
+    where: { id: params.id },
   })
+
+  if (!vehicleData) {
+    notFound()
+  }
+
+  const [vehicleType, driver, owner] = await Promise.all([
+    vehicleData.vehicleTypeId
+      ? prisma.vehicleType.findUnique({ where: { id: vehicleData.vehicleTypeId } })
+      : null,
+    vehicleData.driverId
+      ? prisma.driver.findUnique({ where: { id: vehicleData.driverId } })
+      : null,
+    vehicleData.ownerId
+      ? prisma.owner.findUnique({ where: { id: vehicleData.ownerId } })
+      : null,
+  ])
+
+  const vehicle = { ...vehicleData, vehicleType, driver, owner }
 
   if (!vehicle) {
     notFound()

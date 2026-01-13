@@ -7,12 +7,7 @@ export async function GET(
 ) {
   try {
     const vehicle = await prisma.vehicle.findUnique({
-      where: { id: parseInt(params.id) },
-      include: {
-        vehicleType: true,
-        driver: true,
-        owner: true,
-      },
+      where: { id: params.id },
     })
 
     if (!vehicle) {
@@ -22,9 +17,19 @@ export async function GET(
       )
     }
 
+    const [vehicleType, driver, owner] = await Promise.all([
+      vehicle.vehicleTypeId
+        ? prisma.vehicleType.findUnique({ where: { id: vehicle.vehicleTypeId } })
+        : null,
+      vehicle.driverId
+        ? prisma.driver.findUnique({ where: { id: vehicle.driverId } })
+        : null,
+      vehicle.ownerId ? prisma.owner.findUnique({ where: { id: vehicle.ownerId } }) : null,
+    ])
+
     return NextResponse.json({
       success: true,
-      data: vehicle,
+      data: { ...vehicle, vehicleType, driver, owner },
     })
   } catch (error) {
     console.error('Error fetching vehicle:', error)
@@ -42,31 +47,36 @@ export async function PUT(
   try {
     const body = await request.json()
 
+    const data: any = { ...body }
+
+    if (data.vehicleTypeId && !/^[0-9a-fA-F]{24}$/.test(data.vehicleTypeId)) {
+      delete data.vehicleTypeId
+    }
+    if (data.driverId && !/^[0-9a-fA-F]{24}$/.test(data.driverId)) {
+      delete data.driverId
+    }
+    if (data.ownerId && !/^[0-9a-fA-F]{24}$/.test(data.ownerId)) {
+      delete data.ownerId
+    }
+
     const vehicle = await prisma.vehicle.update({
-      where: { id: parseInt(params.id) },
-      data: {
-        vehicleTypeId: body.vehicleTypeId,
-        engineNumber: body.engineNumber,
-        chassisNumber: body.chassisNumber,
-        vehicleLicenseNumber: body.vehicleLicenseNumber,
-        vehicleCapacity: body.vehicleCapacity,
-        vehicleLocation: body.vehicleLocation,
-        serviceArea: body.serviceArea,
-        status: body.status,
-        vehiclePic: body.vehiclePic,
-        driverId: body.driverId,
-        ownerId: body.ownerId,
-      },
-      include: {
-        vehicleType: true,
-        driver: true,
-        owner: true,
-      },
+      where: { id: params.id },
+      data,
     })
+
+    const [vehicleType, driver, owner] = await Promise.all([
+      vehicle.vehicleTypeId
+        ? prisma.vehicleType.findUnique({ where: { id: vehicle.vehicleTypeId } })
+        : null,
+      vehicle.driverId
+        ? prisma.driver.findUnique({ where: { id: vehicle.driverId } })
+        : null,
+      vehicle.ownerId ? prisma.owner.findUnique({ where: { id: vehicle.ownerId } }) : null,
+    ])
 
     return NextResponse.json({
       success: true,
-      data: vehicle,
+      data: { ...vehicle, vehicleType, driver, owner },
     })
   } catch (error) {
     console.error('Error updating vehicle:', error)
@@ -86,11 +96,14 @@ export async function PATCH(
     const { status } = body
 
     if (!status) {
-      return NextResponse.json({ success: false, error: 'Status is required' }, { status: 400 })
+      return NextResponse.json(
+        { success: false, error: 'Status is required' },
+        { status: 400 }
+      )
     }
 
     const updatedVehicle = await prisma.vehicle.update({
-      where: { id: parseInt(params.id) },
+      where: { id: params.id },
       data: {
         status: status,
       },
@@ -115,7 +128,7 @@ export async function DELETE(
 ) {
   try {
     await prisma.vehicle.delete({
-      where: { id: parseInt(params.id) },
+      where: { id: params.id },
     })
 
     return NextResponse.json({

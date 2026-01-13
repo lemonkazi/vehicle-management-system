@@ -1,0 +1,103 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-1.1.x"]
+}
+
+datasource db {
+  provider = env("DATABASE_CONNECTION")
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model VehicleType {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  vehicles    Vehicle[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("vehicle_types")
+}
+
+model Owner {
+  id               Int       @id @default(autoincrement())
+  name             String
+  contractNumber   String?   @unique @map("contract_number")
+  nidNumber        String?   @unique @map("nid_number")
+  districtName     String?   @map("district_name")
+  presentAddress   String?   @map("present_address")
+  permanentAddress String?   @map("permanent_address")
+  picture          String?
+  vehicles         Vehicle[]
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@map("owners")
+}
+
+model Driver {
+  id                   Int       @id @default(autoincrement())
+  name                 String
+  contractNumber       String?   @unique @map("contract_number")
+  nidNumber            String?   @unique @map("nid_number")
+  districtName         String?   @map("district_name")
+  presentAddress       String?   @map("present_address")
+  permanentAddress     String?   @map("permanent_address")
+  drivingLicenseNumber String?   @unique @map("driving_license_number")
+  experienceDuration   String?   @map("experience_duration")
+  picture              String?
+  vehicles             Vehicle[]
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@map("drivers")
+}
+
+model Vehicle {
+  id                   Int          @id @default(autoincrement())
+  vehicleTypeId        Int?         @map("vehicle_type_id")
+  engineNumber         String?      @unique @map("engine_number")
+  chassisNumber        String?      @unique @map("chassis_number")
+  vehicleLicenseNumber String?      @unique @map("vehicle_license_number")
+  vehicleCapacity      String?      @map("vehicle_capacity")
+  vehicleLocation      String?      @map("vehicle_location")
+  serviceArea          String?      @map("service_area")
+  status               VehicleStatus @default(AVAILABLE)
+  vehiclePic           String?      @map("vehicle_pic")
+  driverId             Int?         @map("driver_id")
+  ownerId              Int?         @map("owner_id")
+  vehicleType          VehicleType? @relation(fields: [vehicleTypeId], references: [id])
+  driver               Driver?      @relation(fields: [driverId], references: [id])
+  owner                Owner?       @relation(fields: [ownerId], references: [id])
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+
+  @@map("vehicles")
+  @@index([status])
+  @@index([vehicleTypeId])
+  @@index([vehicleLocation])
+}
+
+enum VehicleStatus {
+  LOADING
+  UNLOADING
+  AVAILABLE
+  BUSY
+}
+
+enum Role {
+  ADMIN
+  USER
+}

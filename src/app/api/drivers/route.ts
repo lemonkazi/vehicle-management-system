@@ -10,40 +10,46 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit
 
-    const where: any = search ? {
-      OR: [
-        { name: { contains: search, mode: 'insensitive' } },
-        { contractNumber: { contains: search, mode: 'insensitive' } },
-        { drivingLicenseNumber: { contains: search, mode: 'insensitive' } },
-      ],
-    } : {}
+    const where: any = search
+      ? {
+          OR: [
+            { name: { contains: search } },
+            { contractNumber: { contains: search } },
+            { drivingLicenseNumber: { contains: search } },
+          ],
+        }
+      : {}
 
     const [drivers, total] = await Promise.all([
       prisma.driver.findMany({
         where,
-        include: {
-          vehicles: {
-            select: { id: true }
-          }
-        },
         orderBy: {
-          createdAt: 'desc'
+          createdAt: 'desc',
         },
         take: limit,
         skip: skip,
       }),
-      prisma.driver.count({ where })
+      prisma.driver.count({ where }),
     ])
+
+    const driversWithVehicleCount = await Promise.all(
+      drivers.map(async (driver) => {
+        const vehicleCount = await prisma.vehicle.count({
+          where: { driverId: driver.id },
+        })
+        return { ...driver, _count: { vehicles: vehicleCount } }
+      })
+    )
 
     return NextResponse.json({
       success: true,
-      data: drivers,
+      data: driversWithVehicleCount,
       pagination: {
         page,
         limit,
         total,
         pages: Math.ceil(total / limit),
-      }
+      },
     })
   } catch (error) {
     console.error('Error fetching drivers:', error)
@@ -68,13 +74,13 @@ export async function POST(request: NextRequest) {
         permanentAddress: body.permanentAddress,
         drivingLicenseNumber: body.drivingLicenseNumber,
         experienceDuration: body.experienceDuration,
-        picture: body.picture
-      }
+        picture: body.picture,
+      },
     })
 
     return NextResponse.json({
       success: true,
-      data: driver
+      data: driver,
     })
   } catch (error) {
     console.error('Error creating driver:', error)

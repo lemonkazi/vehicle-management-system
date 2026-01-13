@@ -2,9 +2,6 @@ FROM node:18-alpine
 
 RUN apk add --no-cache openssl
 
-ARG DATABASE_URL
-ENV DATABASE_URL=$DATABASE_URL
-
 WORKDIR /app
 
 # Copy package files

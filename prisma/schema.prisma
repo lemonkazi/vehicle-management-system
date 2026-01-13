@@ -4,90 +4,74 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   @unique
   password  String
   name      String?
   role      Role     @default(USER)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("users")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model VehicleType {
-  id          Int       @id @default(autoincrement())
-  name        String    @unique
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
   description String?
-  vehicles    Vehicle[]
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  @@map("vehicle_types")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Owner {
-  id               Int       @id @default(autoincrement())
-  name             String
-  contractNumber   String?   @unique @map("contract_number")
-  nidNumber        String?   @unique @map("nid_number")
-  districtName     String?   @map("district_name")
-  presentAddress   String?   @map("present_address")
-  permanentAddress String?   @map("permanent_address")
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  contractNumber String?  @unique
+  nidNumber      String?  @unique
+  districtName     String?
+  presentAddress   String?
+  permanentAddress String?
   picture          String?
-  vehicles         Vehicle[]
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-
-  @@map("owners")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
-model Driver {
-  id                   Int       @id @default(autoincrement())
-  name                 String
-  contractNumber       String?   @unique @map("contract_number")
-  nidNumber            String?   @unique @map("nid_number")
-  districtName         String?   @map("district_name")
-  presentAddress       String?   @map("present_address")
-  permanentAddress     String?   @map("permanent_address")
-  drivingLicenseNumber String?   @unique @map("driving_license_number")
-  experienceDuration   String?   @map("experience_duration")
-  picture              String?
-  vehicles             Vehicle[]
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
 
-  @@map("drivers")
+model Driver {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  name                 String
+  contractNumber       String?  @unique
+  nidNumber            String?  @unique
+  districtName         String?
+  presentAddress       String?
+  permanentAddress     String?
+  drivingLicenseNumber String?  @unique
+  experienceDuration   String?
+  picture              String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model Vehicle {
-  id                   Int          @id @default(autoincrement())
-  vehicleTypeId        Int?         @map("vehicle_type_id")
-  engineNumber         String?      @unique @map("engine_number")
-  chassisNumber        String?      @unique @map("chassis_number")
-  vehicleLicenseNumber String?      @unique @map("vehicle_license_number")
-  vehicleCapacity      String?      @map("vehicle_capacity")
-  vehicleLocation      String?      @map("vehicle_location")
-  serviceArea          String?      @map("service_area")
-  status               VehicleStatus @default(AVAILABLE)
-  vehiclePic           String?      @map("vehicle_pic")
-  driverId             Int?         @map("driver_id")
-  ownerId              Int?         @map("owner_id")
-  vehicleType          VehicleType? @relation(fields: [vehicleTypeId], references: [id])
-  driver               Driver?      @relation(fields: [driverId], references: [id])
-  owner                Owner?       @relation(fields: [ownerId], references: [id])
-  createdAt            DateTime     @default(now()) @map("created_at")
-  updatedAt            DateTime     @updatedAt @map("updated_at")
+  id                   String        @id @default(auto()) @map("_id") @db.ObjectId
+  vehicleTypeId        String?       @db.ObjectId
+  driverId             String?       @db.ObjectId
+  ownerId              String?       @db.ObjectId
 
-  @@map("vehicles")
-  @@index([status])
-  @@index([vehicleTypeId])
-  @@index([vehicleLocation])
+  engineNumber         String?       @unique
+  chassisNumber        String?       @unique
+  vehicleLicenseNumber String?       @unique
+  vehicleCapacity      String?
+  vehicleLocation      String?
+  serviceArea          String?
+  status               VehicleStatus @default(AVAILABLE)
+  vehiclePic           String?
+
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 }
 
 enum VehicleStatus {

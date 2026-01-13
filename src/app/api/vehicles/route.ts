@@ -20,39 +20,29 @@ export async function GET(request: NextRequest) {
     }
 
     if (type) {
-      where.vehicleType = {
-        name: {
-          contains: type,
-          mode: 'insensitive'
-        }
-      }
+      where.vehicleTypeId = type
     }
-    
+
     if (location) {
       where.vehicleLocation = {
         contains: location,
-        mode: 'insensitive'
       }
     }
-    
+
+    console.log("WHERE CLAUSE:", JSON.stringify(where, null, 2));
+
     if (search) {
       where.OR = [
-        { vehicleLicenseNumber: { contains: search, mode: 'insensitive' } },
-        { engineNumber: { contains: search, mode: 'insensitive' } },
-        { chassisNumber: { contains: search, mode: 'insensitive' } },
-        { vehicleType: { name: { contains: search, mode: 'insensitive' } } },
-        { serviceArea: { contains: search, mode: 'insensitive' } }
+        { vehicleLicenseNumber: { contains: search } },
+        { engineNumber: { contains: search } },
+        { chassisNumber: { contains: search } },
+        { serviceArea: { contains: search } },
       ]
     }
 
     const [vehicles, total] = await Promise.all([
       prisma.vehicle.findMany({
         where,
-        include: {
-          vehicleType: true,
-          driver: true,
-          owner: true,
-        },
         skip,
         take: limit,
         orderBy: {
@@ -62,9 +52,24 @@ export async function GET(request: NextRequest) {
       prisma.vehicle.count({ where }),
     ])
 
+    const vehiclesWithDetails = await Promise.all(
+      vehicles.map(async (vehicle) => {
+        const [vehicleType, driver, owner] = await Promise.all([
+          vehicle.vehicleTypeId
+            ? prisma.vehicleType.findUnique({ where: { id: vehicle.vehicleTypeId } })
+            : null,
+          vehicle.driverId
+            ? prisma.driver.findUnique({ where: { id: vehicle.driverId } })
+            : null,
+          vehicle.ownerId ? prisma.owner.findUnique({ where: { id: vehicle.ownerId } }) : null,
+        ])
+        return { ...vehicle, vehicleType, driver, owner }
+      })
+    )
+
     return NextResponse.json({
       success: true,
-      data: vehicles,
+      data: vehiclesWithDetails,
       pagination: {
         page,
         limit,
@@ -85,30 +90,35 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
+    const data: any = { ...body }
+
+    if (data.vehicleTypeId && !/^[0-9a-fA-F]{24}$/.test(data.vehicleTypeId)) {
+      delete data.vehicleTypeId
+    }
+    if (data.driverId && !/^[0-9a-fA-F]{24}$/.test(data.driverId)) {
+      delete data.driverId
+    }
+    if (data.ownerId && !/^[0-9a-fA-F]{24}$/.test(data.ownerId)) {
+      delete data.ownerId
+    }
+
     const vehicle = await prisma.vehicle.create({
-      data: {
-        vehicleTypeId: body.vehicleTypeId,
-        engineNumber: body.engineNumber,
-        chassisNumber: body.chassisNumber,
-        vehicleLicenseNumber: body.vehicleLicenseNumber,
-        vehicleCapacity: body.vehicleCapacity,
-        vehicleLocation: body.vehicleLocation,
-        serviceArea: body.serviceArea,
-        status: body.status || 'AVAILABLE',
-        vehiclePic: body.vehiclePic,
-        driverId: body.driverId,
-        ownerId: body.ownerId,
-      },
-      include: {
-        vehicleType: true,
-        driver: true,
-        owner: true,
-      },
+      data,
     })
+
+    const [vehicleType, driver, owner] = await Promise.all([
+      vehicle.vehicleTypeId
+        ? prisma.vehicleType.findUnique({ where: { id: vehicle.vehicleTypeId } })
+        : null,
+      vehicle.driverId
+        ? prisma.driver.findUnique({ where: { id: vehicle.driverId } })
+        : null,
+      vehicle.ownerId ? prisma.owner.findUnique({ where: { id: vehicle.ownerId } }) : null,
+    ])
 
     return NextResponse.json({
       success: true,
-      data: vehicle,
+      data: { ...vehicle, vehicleType, driver, owner },
     })
   } catch (error) {
     console.error('Error creating vehicle:', error)

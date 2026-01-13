@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 
 interface Vehicle {
-  id: number
+  id: string
   vehicleLicenseNumber: string | null
   vehicleType: {
     name: string
@@ -24,7 +24,7 @@ interface Vehicle {
 }
 
 interface Driver {
-  id: number
+  id: string
   name: string
   contractNumber: string | null
   nidNumber: string | null

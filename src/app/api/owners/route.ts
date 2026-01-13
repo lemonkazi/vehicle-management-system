@@ -10,40 +10,46 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit
 
-    const where: any = search ? {
-      OR: [
-        { name: { contains: search, mode: 'insensitive' } },
-        { contractNumber: { contains: search, mode: 'insensitive' } },
-        { nidNumber: { contains: search, mode: 'insensitive' } },
-      ],
-    } : {}
+    const where: any = search
+      ? {
+          OR: [
+            { name: { contains: search } },
+            { contractNumber: { contains: search } },
+            { nidNumber: { contains: search } },
+          ],
+        }
+      : {}
 
     const [owners, total] = await Promise.all([
       prisma.owner.findMany({
         where,
-        include: {
-          vehicles: {
-            select: { id: true }
-          }
-        },
         orderBy: {
-          createdAt: 'desc'
+          createdAt: 'desc',
         },
         take: limit,
         skip: skip,
       }),
-      prisma.owner.count({ where })
+      prisma.owner.count({ where }),
     ])
+
+    const ownersWithVehicleCount = await Promise.all(
+      owners.map(async (owner) => {
+        const vehicleCount = await prisma.vehicle.count({
+          where: { ownerId: owner.id },
+        })
+        return { ...owner, _count: { vehicles: vehicleCount } }
+      })
+    )
 
     return NextResponse.json({
       success: true,
-      data: owners,
+      data: ownersWithVehicleCount,
       pagination: {
         page,
         limit,
         total,
         pages: Math.ceil(total / limit),
-      }
+      },
     })
   } catch (error) {
     console.error('Error fetching owners:', error)
@@ -66,13 +72,13 @@ export async function POST(request: NextRequest) {
         districtName: body.districtName,
         presentAddress: body.presentAddress,
         permanentAddress: body.permanentAddress,
-        picture: body.picture
-      }
+        picture: body.picture,
+      },
     })
 
     return NextResponse.json({
       success: true,
-      data: owner
+      data: owner,
     })
   } catch (error) {
     console.error('Error creating owner:', error)

@@ -6,10 +6,12 @@ import Link from 'next/link'
 import { Truck, Car, Package, ShieldPlus } from 'lucide-react'
 
 interface VehicleType {
-  id: number
+  id: string
   name: string
   description?: string
-  vehicles?: Array<{ id: number }>
+  _count?: {
+    vehicles: number
+  }
 }
 
 export default function VehicleTypesPage() {
@@ -76,7 +78,7 @@ export default function VehicleTypesPage() {
                   <h3 className="text-2xl font-bold text-gray-800 mb-2">{type.name}</h3>
                   <p className="text-gray-600 mb-4 h-12 overflow-hidden">{type.description || 'No description available.'}</p>
                   <div className="inline-block bg-primary-100 text-primary-800 px-4 py-1 rounded-full text-sm font-semibold">
-                    {type.vehicles?.length || 0} Vehicles Available
+                    {type._count?.vehicles || 0} Vehicles Available
                   </div>
                 </div>
               </Link>

@@ -16,12 +16,14 @@ import {
 } from 'lucide-react'
 
 interface VehicleType {
-  id: number
+  id: string
   name: string
   description?: string
   createdAt: string
   updatedAt: string
-  vehicles?: Array<{ id: number }>
+  _count?: {
+    vehicles: number
+  }
 }
 
 interface Pagination {
@@ -119,7 +121,7 @@ export default function AdminVehicleTypesPage() {
     setShowForm(true)
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this vehicle type?')) return
     
     try {
@@ -238,7 +240,7 @@ export default function AdminVehicleTypesPage() {
                         <div className="ml-4">
                           <h3 className="text-lg font-bold text-gray-800">{type.name}</h3>
                           <p className="text-sm text-gray-600">
-                            {type.vehicles?.length || 0} vehicles
+                            {type._count?.vehicles || 0} vehicles
                           </p>
                         </div>
                       </div>
