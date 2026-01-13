@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, VehicleStatus } from '@prisma/client'
+
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -129,10 +130,10 @@ async function main() {
       vehicleCapacity: '10 tons',
       vehicleLocation: 'Dhaka',
       serviceArea: 'Dhaka Division',
-      status: 'AVAILABLE',
-      vehicleTypeId: vehicleTypesDb.find(v => v.name === 'Truck')?.id,
-      driverId: driversDb.find(d => d.contractNumber === '+1234567890')?.id,
-      ownerId: ownersDb.find(o => o.contractNumber === '+1122334455')?.id
+      status: VehicleStatus.AVAILABLE,
+      vehicleTypeId: vehicleTypesDb.find(v => v.name === 'Truck')!.id,
+      driverId: driversDb.find(d => d.contractNumber === '+1234567890')!.id,
+      ownerId: ownersDb.find(o => o.contractNumber === '+1122334455')!.id
     },
     {
       engineNumber: 'ENG789012',
@@ -141,12 +142,13 @@ async function main() {
       vehicleCapacity: '1 ton',
       vehicleLocation: 'Chittagong',
       serviceArea: 'Chittagong Division',
-      status: 'LOADING',
-      vehicleTypeId: vehicleTypesDb.find(v => v.name === 'Pickup')?.id,
-      driverId: driversDb.find(d => d.contractNumber === '+9876543210')?.id,
-      ownerId: ownersDb.find(o => o.contractNumber === '+9988776655')?.id
+      status: VehicleStatus.LOADING,
+      vehicleTypeId: vehicleTypesDb.find(v => v.name === 'Pickup')!.id,
+      driverId: driversDb.find(d => d.contractNumber === '+9876543210')!.id,
+      ownerId: ownersDb.find(o => o.contractNumber === '+9988776655')!.id
     }
   ]
+
 
   for (const vehicle of vehicles) {
     if (!vehicle.vehicleTypeId || !vehicle.driverId || !vehicle.ownerId) {

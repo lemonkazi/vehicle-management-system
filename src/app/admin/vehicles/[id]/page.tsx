@@ -12,14 +12,14 @@ import {
   Tag,
   MapPin,
   Package,
-  Tool,
+  Wrench,
   Hash,
   CheckCircle,
   Clock
 } from 'lucide-react'
 
 interface Vehicle {
-  id: number
+  id: string
   vehicleLicenseNumber: string | null
   engineNumber: string | null
   chassisNumber: string | null
@@ -161,8 +161,8 @@ export default function VehicleDetailsPage() {
               
               <InfoItem icon={<Tag />} label="Type" value={vehicle.vehicleType?.name} link={`/admin/vehicle-types/${vehicle.vehicleType?.id}`} />
               <InfoItem icon={<Hash />} label="License Plate" value={vehicle.vehicleLicenseNumber} />
-              <InfoItem icon={<Tool />} label="Engine No." value={vehicle.engineNumber} />
-              <InfoItem icon={<Tool />} label="Chassis No." value={vehicle.chassisNumber} />
+              <InfoItem icon={<Wrench />} label="Engine No." value={vehicle.engineNumber} />
+              <InfoItem icon={<Wrench />} label="Chassis No." value={vehicle.chassisNumber} />
               <InfoItem icon={<Package />} label="Capacity" value={vehicle.vehicleCapacity} />
               <InfoItem icon={<MapPin />} label="Location" value={vehicle.vehicleLocation} />
               <InfoItem icon={<MapPin />} label="Service Area" value={vehicle.serviceArea} />

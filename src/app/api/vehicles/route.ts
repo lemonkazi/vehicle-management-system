@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { VehicleStatus } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -89,8 +90,30 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    const { status, ...rest } = body
+    const data: any = { ...rest }
 
-    const data: any = { ...body }
+    if (status) {
+      const validStatuses = Object.values(VehicleStatus)
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json(
+          { success: false, error: `Invalid vehicle status: ${status}. Must be one of ${validStatuses.join(', ')}` },
+          { status: 400 }
+        )
+      }
+      data.status = status
+    }
+
+    if (status) {
+      const validStatuses = Object.values(VehicleStatus)
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json(
+          { success: false, error: `Invalid vehicle status: ${status}. Must be one of ${validStatuses.join(', ')}` },
+          { status: 400 }
+        )
+      }
+      data.status = status
+    }
 
     if (data.vehicleTypeId && !/^[0-9a-fA-F]{24}$/.test(data.vehicleTypeId)) {
       delete data.vehicleTypeId

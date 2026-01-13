@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 
 interface Vehicle {
-  id: number
+  id: string
   vehicleLicenseNumber?: string
   engineNumber?: string
   chassisNumber?: string
@@ -55,7 +55,7 @@ export default function AdminVehiclesPage() {
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedType, setSelectedType] = useState('')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [vehicleToDelete, setVehicleToDelete] = useState<number | null>(null)
+  const [vehicleToDelete, setVehicleToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     fetchVehicles(currentPage, searchTerm, selectedStatus, selectedType)
@@ -84,9 +84,13 @@ export default function AdminVehiclesPage() {
     }
   }
 
-  const handleStatusChange = async (vehicleId: number, newStatus: string) => {
-    // Optimistically update the UI
-    setVehicles(vehicles.map(v => v.id === vehicleId ? { ...v, status: newStatus } : v))
+  const handleStatusChange = async (vehicleId: string, newStatus: string) => {
+    // Optimistic UI update
+    setVehicles(prev =>
+      prev.map(v =>
+        v.id === vehicleId ? { ...v, status: newStatus } : v
+      )
+    )
 
     try {
       const response = await fetch(`/api/vehicles/${vehicleId}`, {
@@ -96,15 +100,13 @@ export default function AdminVehiclesPage() {
       })
 
       if (!response.ok) {
-        // Revert the change on failure
-        console.error("Failed to update status")
-        fetchVehicles(currentPage, searchTerm, selectedStatus, selectedType) // Refetch to get the real state
+        throw new Error('Failed to update status')
       }
     } catch (error) {
-      console.error('Error updating status:', error)
-      fetchVehicles(currentPage, searchTerm, selectedStatus, selectedType)
+      console.error(error)
     }
   }
+
 
   const handleDelete = async () => {
     if (!vehicleToDelete) return

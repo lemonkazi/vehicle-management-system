@@ -1,7 +1,7 @@
 import VehicleCard from './VehicleCard'
 
 interface Vehicle {
-  id: number
+  id: string
   vehiclePic?: string
   vehicleLicenseNumber?: string
   vehicleCapacity?: string

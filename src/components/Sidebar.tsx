@@ -25,7 +25,7 @@ const getIcon = (name: string) => {
 
 export default function Sidebar() {
   const router = useRouter()
-  const { isAuthenticated, login } = useAuth()
+  const { isAuthenticated} = useAuth()
   const [isLoginOpen, setIsLoginOpen] = useState(false)
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
   const [loginError, setLoginError] = useState('')
@@ -51,7 +51,7 @@ export default function Sidebar() {
     e.preventDefault()
     setLoginError('')
     try {
-      await login(loginForm.email, loginForm.password)
+      //await login(loginForm.email, loginForm.password)
       setIsLoginOpen(false)
       router.push('/admin') // Redirect to admin dashboard on successful login
     } catch (error) {

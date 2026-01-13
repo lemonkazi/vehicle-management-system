@@ -6,7 +6,7 @@ import VehicleList from '@/components/VehicleList'
 import Sidebar from '@/components/Sidebar'
 
 interface Vehicle {
-  id: number
+  id: string
   vehicleLicenseNumber?: string
   status: string
   vehiclePic?: string

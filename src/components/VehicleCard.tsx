@@ -4,7 +4,7 @@ import { Truck, MapPin, Users, Calendar } from 'lucide-react'
 
 interface VehicleCardProps {
   vehicle: {
-    id: number
+    id: string
     vehiclePic?: string
     vehicleLicenseNumber?: string
     vehicleCapacity?: string
