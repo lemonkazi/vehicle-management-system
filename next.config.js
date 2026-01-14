@@ -12,8 +12,15 @@ const nextConfig = {
         hostname: 'localhost',
         pathname: '/**',
       },
+      // Add your Supabase domain here
+      {
+        protocol: 'https',
+        hostname: 'atacdbnkygxjlbiivnou.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
     ],
-    domains: ['localhost'],
+    // Note: The 'domains' array is deprecated in favor of 'remotePatterns'
+    // domains: ['localhost'], // You can remove this line
   },
   async headers() {
     return [

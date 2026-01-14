@@ -34,8 +34,12 @@ export default function NewOwnerPage() {
     uploadFormData.append('file', file)
 
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch('/api/upload', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: uploadFormData
       })
       const data = await response.json()

@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { writeFile } from 'fs/promises'
-import { join } from 'path'
-import { randomUUID } from 'crypto'
+import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,19 +15,32 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes)
 
     // Generate a unique filename
-    const extension = file.name.split('.').pop()
-    const filename = `${randomUUID()}.${extension}`
+    const extension = file.name.split('.').pop();
+    const filename = `${randomUUID()}.${extension}`;
 
-    const uploadsDir = join(process.cwd(), 'public', 'uploads')
-    const path = join(uploadsDir, filename)
-    
-    await writeFile(path, buffer)
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('vehicle_bucket')
+      .upload(filename, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
 
-    const publicUrl = `/uploads/${filename}`
+    if (uploadError) {
+      console.error('Error uploading to Supabase:', uploadError);
+      return NextResponse.json({ success: false, error: 'File upload failed', details: uploadError.message }, { status: 500 });
+    }
 
-    return NextResponse.json({ success: true, url: publicUrl })
+    const { data: publicUrlData } = supabase.storage
+      .from('vehicle_bucket')
+      .getPublicUrl(filename);
+
+    if (!publicUrlData) {
+      return NextResponse.json({ success: false, error: 'Could not get public URL' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, url: publicUrlData.publicUrl });
   } catch (error) {
-    console.error('Error uploading file:', error)
-    return NextResponse.json({ success: false, error: 'File upload failed' }, { status: 500 })
+    console.error('Error uploading file:', error);
+    return NextResponse.json({ success: false, error: 'File upload failed' }, { status: 500 });
   }
 }

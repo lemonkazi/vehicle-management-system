@@ -76,13 +76,20 @@ export default function EditDriverPage() {
     uploadFormData.append('file', file)
 
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch('/api/upload', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: uploadFormData
       })
       const data = await response.json()
       if (data.success) {
         setFormData({ ...formData, picture: data.url })
+      } else {
+        console.error('Error uploading image:', data.error)
+        // Optionally, show an error message to the user
       }
     } catch (error) {
       console.error('Error uploading image:', error)
