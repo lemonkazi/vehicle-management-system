@@ -1,8 +1,9 @@
 // src/app/contact/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Mail, Phone, MapPin, Send } from 'lucide-react'
+import ReCAPTCHA from 'react-google-recaptcha'
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -13,22 +14,47 @@ export default function ContactPage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'success' | 'error' | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const recaptchaRef = useRef<ReCAPTCHA>(null)
+
+  const handleCaptchaChange = (token: string | null) => {
+    setCaptchaToken(token)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!captchaToken) {
+      setSubmitStatus('error')
+      // You might want to show a more specific message to the user
+      return
+    }
+
     setIsSubmitting(true)
     setSubmitStatus(null)
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ...formData, captchaToken })
+      })
 
-    // In a real app, you would send the data to your API here
-    console.log('Form submitted:', formData)
-    
-    // Simulate a success response
-    setSubmitStatus('success')
-    setFormData({ name: '', email: '', subject: '', message: '' })
-    setIsSubmitting(false)
+      if (response.ok) {
+        setSubmitStatus('success')
+        setFormData({ name: '', email: '', subject: '', message: '' })
+        recaptchaRef.current?.reset()
+      } else {
+        setSubmitStatus('error')
+      }
+    } catch (error) {
+      console.error('Form submission error:', error)
+      setSubmitStatus('error')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -84,22 +110,27 @@ export default function ContactPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input type="text" name="name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                <input type="text" name="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" name="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                <input type="email" name="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                <input type="text" name="subject" value={formData.subject} onChange={(e) => setFormData({...formData, subject: e.target.value})} required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                <input type="text" name="subject" value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                <textarea name="message" value={formData.message} onChange={(e) => setFormData({...formData, message: e.target.value})} required rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+                <textarea name="message" value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} required rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
               </div>
+              <ReCAPTCHA
+                ref={recaptchaRef}
+                sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+                onChange={handleCaptchaChange}
+              />
               <div>
-                <button type="submit" disabled={isSubmitting} className="w-full flex items-center justify-center bg-primary-600 text-white px-4 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:bg-primary-300">
+                <button type="submit" disabled={isSubmitting || !captchaToken} className="w-full flex items-center justify-center bg-primary-600 text-white px-4 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:bg-gray-400">
                   <Send className="h-5 w-5 mr-2" />
                   {isSubmitting ? 'Sending...' : 'Send Message'}
                 </button>
@@ -108,7 +139,7 @@ export default function ContactPage() {
                 <p className="text-green-600 text-center">Thank you for your message! We will get back to you shortly.</p>
               )}
               {submitStatus === 'error' && (
-                <p className="text-red-600 text-center">Something went wrong. Please try again later.</p>
+                <p className="text-red-600 text-center">Something went wrong. Please complete the CAPTCHA and try again.</p>
               )}
             </form>
           </div>
